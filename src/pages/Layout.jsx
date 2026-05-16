@@ -4,11 +4,11 @@ import Header from '../components/app/Header'
 
 const Layout = () => {
   return (
-    <div>
+    <div className="bg-zinc-950">
       <Header />
-      <div className='bg-gray-900'>
+      <main className="bg-zinc-950">
         <Outlet />
-      </div>
+      </main>
     </div>
   )
 }

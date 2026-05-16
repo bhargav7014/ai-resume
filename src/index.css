@@ -2,6 +2,130 @@
 
 @import "tailwindcss";
 
-*{
-  font-family: outfit, sans-serif;
+* {
+  font-family: 'Outfit', sans-serif;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  /* 1. Force the root and body to have a white background and be fully visible */
+  html, body, #root {
+    background: white !important;
+    color: black !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+  }
+
+  /* 2. Hide all non-resume UI elements */
+  header, nav, footer, .no-print, .analyzer-modal, .import-modal {
+    display: none !important;
+  }
+
+  /* 3. Override dark backgrounds on specific wrappers so they don't print as large black boxes */
+  .bg-zinc-950, .bg-\[\#09090b\], .bg-zinc-900\/20, main {
+    background-color: white !important;
+    background-image: none !important;
+  }
+
+  /* 4. Completely disable scrollbars and fixed heights across the entire layout */
+  *, .overflow-y-auto, .overflow-hidden, .flex, .h-full, .h-\[calc\(100vh-64px\)\] {
+    overflow: visible !important;
+    overflow-y: visible !important;
+    overflow-x: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+
+  /* Flatten flex layouts that might constrain height, except for internal resume layout */
+  body > div, #root > div, main > div, #resume-preview-container {
+    display: block !important;
+  }
+
+  /* 5. Ensure the right pane takes up the full width */
+  div[style*="width"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* 6. Center the resume and remove shadows/borders */
+  #resume-preview-container {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #resume-preview {
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 210mm !important;
+    font-size: 11pt !important; /* Standard print font size */
+    line-height: 1.3 !important;
+  }
+
+  /* Compact spacing for print */
+  #resume-preview [class*="p-"], 
+  #resume-preview [class*="px-"], 
+  #resume-preview [class*="py-"] {
+    padding: 0.5rem !important;
+  }
+  
+  #resume-preview [class*="mb-"],
+  #resume-preview [class*="my-"],
+  #resume-preview [class*="space-y-"] > * + * {
+    margin-bottom: 0.5rem !important;
+    margin-top: 0.5rem !important;
+  }
+
+  /* Header specific compacting */
+  #resume-preview h1 { font-size: 24pt !important; margin-bottom: 0.2rem !important; }
+  #resume-preview h2 { font-size: 14pt !important; margin-bottom: 0.2rem !important; }
+  #resume-preview h3 { font-size: 12pt !important; margin-bottom: 0.3rem !important; }
+
+  /* 7. Pagination and Page Breaks - Smarter Logic */
+  #resume-preview section {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    margin-bottom: 1rem !important;
+  }
+
+  /* Keep headers with their content */
+  #resume-preview h3, 
+  #resume-preview h4 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Prevent small items from breaking, but allow large sections to break naturally */
+  #resume-preview li,
+  #resume-preview .experience-item,
+  #resume-preview .project-item,
+  #resume-preview .education-item {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 8. Ensure colors (like the emerald accents) print exactly as seen on screen */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

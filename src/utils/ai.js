@@ -1,170 +1,120 @@
-/**
- * AI Analysis Service using Groq (OpenAI-compatible)
- * Groq is used for ultra-fast inference speeds.
- */
+const AI_ENDPOINT = '/api/ai'
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const requestAI = async ({ messages, model = 'llama-3.3-70b-versatile', temperature = 0.3, json = false }) => {
+  const response = await fetch(AI_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature,
+      ...(json ? { response_format: { type: 'json_object' } } : {}),
+    }),
+  })
 
-export const analyzeResumeWithAI = async (resumeData, jobDescription = "") => {
-  if (!GROQ_API_KEY || GROQ_API_KEY === 'YOUR_API_KEY_HERE') {
-    throw new Error("Missing Groq API Key. Please ensure VITE_GROQ_API_KEY is set in your .env file.");
-  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.error || 'AI request failed')
 
+  const content = data.choices?.[0]?.message?.content
+  if (!content) throw new Error('AI returned an empty response')
+  return content
+}
+
+export const analyzeResumeWithAI = async (resumeData, jobDescription = '') => {
   const prompt = `
-    You are an elite Technical Recruiter and ATS Optimization Expert. 
-    Critically analyze the resume data below for professional impact, quantitative achievements, and keyword alignment.
-    
-    ${jobDescription ? `TARGET JOB DESCRIPTION (Analyze alignment with these specific requirements):\n${jobDescription}\n\n` : "Analyze against modern high-growth tech industry standards."}
-    
-    Provide:
-    1. A numerical 'Job Fit Score' (0-100). Be strict. A generic resume should score low, while a perfectly tailored one scores 90+. 
-    2. Exactly 5 highly specific, professional, and actionable tips. Do not give generic advice like 'add more skills'. Instead, say 'Include specific experience with [Keyword] as requested in the JD' or 'Quantify the impact in your [X] role'.
-    
-    Resume Data:
-    ${JSON.stringify(resumeData, null, 2)}
-    
-    Return the response ONLY as a valid JSON object:
-    {
-      "score": number,
-      "feedback": ["tip 1", "tip 2", "tip 3", "tip 4", "tip 5"]
-    }
-    
-    Do not include any other text or markdown formatting in your response.
-  `;
+You are an elite technical recruiter and ATS optimization expert.
+Critically analyze the resume below for professional impact, measurable achievements, and keyword alignment.
+${jobDescription ? `TARGET JOB DESCRIPTION:\n${jobDescription}\n` : 'Analyze against modern technology industry standards.'}
 
-  try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional resume analyzer that returns only JSON."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        response_format: { type: "json_object" }
-      })
-    });
+Return exactly this JSON shape:
+{
+  "score": number,
+  "feedback": ["tip 1", "tip 2", "tip 3", "tip 4", "tip 5"]
+}
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || "Groq API call failed");
-    }
+Rules:
+- Score from 0-100. Be strict; never guarantee employment.
+- Give exactly 5 specific, actionable tips.
+- Do not invent experience, metrics, skills, employers, or qualifications.
+- Only recommend keywords that are supported by the target job description or resume.
+- Return JSON only.
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    return JSON.parse(content);
-  } catch (error) {
-    console.error("AI Analysis Error:", error);
-    throw error;
+RESUME DATA:
+${JSON.stringify(resumeData, null, 2)}
+`
+
+  const content = await requestAI({
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.2,
+    json: true,
+    messages: [
+      { role: 'system', content: 'You are a professional resume analyzer. Return only valid JSON.' },
+      { role: 'user', content: prompt },
+    ],
+  })
+
+  const result = JSON.parse(content)
+  return {
+    score: Math.max(0, Math.min(100, Number(result.score) || 0)),
+    feedback: Array.isArray(result.feedback) ? result.feedback.slice(0, 5) : [],
   }
-};
+}
 
-export const enhanceTextWithAI = async (text, fieldType, jobDescription = "") => {
-  if (!GROQ_API_KEY || GROQ_API_KEY === 'YOUR_API_KEY_HERE') {
-    throw new Error("Missing Groq API Key.");
-  }
-
+export const enhanceTextWithAI = async (text, fieldType, jobDescription = '') => {
   const prompt = `
-    You are a professional resume writer. 
-    Polish and enhance the following ${fieldType} to make it sound more professional, impactful, and achievement-oriented.
-    Keep it concise and appropriate for a high-end resume.
-    
-    ${jobDescription ? `Target Job Description (Optimize for these keywords): ${jobDescription}` : ""}
-    
-    Original Text: ${text}
-    
-    Return ONLY the enhanced text. Do not include any explanations or conversational text.
-  `;
+You are a professional resume writer. Improve this ${fieldType} so it is concise, credible, achievement-oriented, and ATS-friendly.
+${jobDescription ? `Target job description:\n${jobDescription}\n` : ''}
 
-  try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.5
-      })
-    });
+Rules:
+- Preserve the original facts.
+- Never invent numbers, technologies, responsibilities, employers, or achievements.
+- Do not add explanations or quotation marks.
+- Return only the improved text.
 
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
-  } catch (error) {
-    console.error("AI Enhancement Error:", error);
-    return text; // Return original text on failure
-  }
-};
+Original text:
+${text}
+`
+
+  return (await requestAI({
+    model: 'llama-3.1-8b-instant',
+    temperature: 0.4,
+    messages: [{ role: 'user', content: prompt }],
+  })).trim()
+}
 
 export const parseResumeWithAI = async (rawText) => {
-  if (!GROQ_API_KEY || GROQ_API_KEY === 'YOUR_API_KEY_HERE') {
-    throw new Error("Missing Groq API Key.");
-  }
-
   const prompt = `
-    Extract structured resume data from the following raw text. 
-    Map it EXACTLY to this JSON structure:
-    {
-      "name": "string",
-      "title": "string",
-      "summary": "string",
-      "skills": ["string"],
-      "experience": [
-        { "id": "unique_string", "title": "string", "company": "string", "duration": "string", "description": "string" }
-      ],
-      "education": [
-        { "id": "unique_string", "degree": "string", "institution": "string", "duration": "string" }
-      ],
-      "projects": [
-        { "id": "unique_string", "title": "string", "duration": "string", "description": "string" }
-      ]
-    }
+Extract structured resume data from the raw text below.
+Return exactly this JSON structure:
+{
+  "name": "string",
+  "title": "string",
+  "summary": "string",
+  "skills": ["string"],
+  "experience": [{ "id": "unique_string", "title": "string", "company": "string", "duration": "string", "description": "string" }],
+  "education": [{ "id": "unique_string", "degree": "string", "institution": "string", "duration": "string" }],
+  "projects": [{ "id": "unique_string", "title": "string", "duration": "string", "description": "string" }]
+}
 
-    Raw Text: 
-    ${rawText}
+Rules:
+- Preserve facts exactly; do not invent missing information.
+- Use empty strings/arrays when information is absent.
+- Generate unique IDs for structured items.
+- Return JSON only.
 
-    Rules:
-    1. If a field is missing, use an empty string or empty array.
-    2. Generate unique IDs for experience, education, and project items.
-    3. Return ONLY valid JSON.
-  `;
+RAW RESUME:
+${rawText}
+`
 
-  try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: "You are a resume parsing assistant that returns JSON." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.1,
-        response_format: { type: "json_object" }
-      })
-    });
+  const content = await requestAI({
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.1,
+    json: true,
+    messages: [
+      { role: 'system', content: 'You are a resume parsing assistant. Return only valid JSON.' },
+      { role: 'user', content: prompt },
+    ],
+  })
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    return JSON.parse(content);
-  } catch (error) {
-    console.error("AI Parsing Error:", error);
-    throw error;
-  }
-};
+  return JSON.parse(content)
+}

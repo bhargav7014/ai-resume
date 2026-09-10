@@ -1,5 +1,5 @@
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist/legacy/build/pdf';
-import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.js?url';
+import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import mammoth from 'mammoth';
 
 // Initialize PDF.js worker
@@ -35,11 +35,8 @@ const extractTextFromPDF = async (file) => {
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-
     const content = await page.getTextContent();
-
     const strings = content.items.map((item) => item.str);
-
     text += strings.join(' ') + '\n';
   }
 
